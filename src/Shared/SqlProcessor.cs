@@ -223,6 +223,27 @@ internal static class SqlProcessor
         return (currentChar != DotChar || indexInToken != 0) && IsUnescapedIdentifierChar(currentChar);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool HasTerminatingEscapedIdentifier(ReadOnlySpan<char> sql, int start)
+    {
+        for (var i = start + 1; i < sql.Length; i++)
+        {
+            if (sql[i] == CloseSquareBracketChar)
+            {
+                if (i + 1 < sql.Length && sql[i + 1] == CloseSquareBracketChar)
+                {
+                    i++;
+                }
+                else
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private static SqlStatementInfo SanitizeSql(string sql)
     {
         var sqlSpan = sql.AsSpan();
@@ -611,7 +632,9 @@ internal static class SqlProcessor
             // Brackets may occur when using schema-qualified or delimited identifiers.
             state.CaptureNextNonKeywordTokenAsIdentifier = state.InFromClause && (currentChar is CommaChar or OpenSquareBracketChar or DotChar);
 
-            if (state.CaptureNextNonKeywordTokenAsIdentifier && currentChar is OpenSquareBracketChar)
+            if (state.CaptureNextNonKeywordTokenAsIdentifier
+                && currentChar is OpenSquareBracketChar
+                && HasTerminatingEscapedIdentifier(sql, state.ParsePosition))
             {
                 state.InEscapedIdentifier = true;
                 AppendSummaryChar(OpenSquareBracketChar, ref state);

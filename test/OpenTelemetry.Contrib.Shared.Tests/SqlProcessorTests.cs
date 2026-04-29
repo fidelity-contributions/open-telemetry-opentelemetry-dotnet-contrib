@@ -28,6 +28,16 @@ public class SqlProcessorTests
         Assert.Equal(sql, sqlStatementInfo.DbQuerySummary);
     }
 
+    [Fact]
+    public void GetSanitizedSql_UnterminatedEscapedIdentifierInFromClause_SanitizesLiterals()
+    {
+        var sql = "SELECT * FROM [Orders WHERE CustomerName = 'secret-name' AND Id = 123 AND Token = 0xDEADBEEF";
+
+        var sqlStatementInfo = SqlProcessor.GetSanitizedSql(sql);
+
+        Assert.Equal("SELECT * FROM [Orders WHERE CustomerName = ? AND Id = ? AND Token = ?", sqlStatementInfo.SanitizedSql);
+    }
+
     [SkippableTheory]
     [MemberData(nameof(TestData))]
     public void TestGetSanitizedSql(SqlProcessorTestCases.TestCase testCase)
